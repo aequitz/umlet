@@ -8,6 +8,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Properties;
 
@@ -15,6 +16,8 @@ import com.baselet.control.basics.geom.Dimension;
 import com.baselet.control.config.Config;
 import com.baselet.control.config.ConfigClassGen;
 import com.baselet.control.config.ConfigMail;
+import com.baselet.control.config.PaletteInsertPosition;
+import com.baselet.control.Main;
 import com.baselet.control.config.SharedConfig;
 import com.baselet.control.enums.Program;
 import com.baselet.control.enums.RuntimeType;
@@ -24,6 +27,8 @@ import com.baselet.control.enums.generator.SignatureOptions;
 import com.baselet.control.enums.generator.SortOptions;
 import com.baselet.control.util.Path;
 import com.baselet.control.util.RecentlyUsedFilesList;
+import com.baselet.diagram.CurrentDiagram;
+import com.baselet.diagram.DiagramHandler;
 import com.baselet.gui.BaseGUI;
 
 public class ConfigHandler {
@@ -37,6 +42,7 @@ public class ConfigHandler {
 	private static final String DEFAULT_FONTFAMILY = "default_fontfamily";
 	private static final String SHOW_STICKINGPOLYGON = "show_stickingpolygon";
 	private static final String SHOW_GRID = "show_grid";
+	private static final String AUTOFIT_SHAPES = "autofit_shapes";
 	private static final String ENABLE_CUSTOM_ELEMENTS = "enable_custom_elements";
 	private static final String PROPERTIES_PANEL_LINE_WRAP = "properties_panel_line_wrap";
 	private static final String PROPERTIES_PANEL_LINE_NUMBERS = "properties_panel_line_numbers";
@@ -60,6 +66,17 @@ public class ConfigHandler {
 	private static final String PROGRAM_SIZE = "program_size";
 	private static final String PROGRAM_LOCATION = "program_location";
 	private static final String RECENT_FILES = "recent_files";
+	private static final String OPEN_PREVIOUS_FILES = "open_previous_files";
+	private static final String SELECT_WITHOUT_CTRL = "select_without_ctrl";
+	private static final String MULTI_SELECT_WITH_SHIFT = "multi_select_with_shift";
+	private static final String AUTOCOMPLETE_WHILE_TYPING = "autocomplete_while_typing";
+	private static final String TYPE_INTO_PROPERTIES = "type_into_properties";
+	private static final String AUTOSAVE = "autosave";
+	private static final String AUTOSAVE_SECONDS = "autosave_seconds";
+	private static final String AUTOSAVE_MINUTES_OLD = "autosave_minutes"; // the interval was stored in minutes before
+	private static final String PALETTE_INSERT_POSITION = "palette_insert_position";
+	private static final String LAST_OPEN_FILES = "last_open_files";
+	private static final String LAST_ACTIVE_FILE = "last_active_file";
 
 	private static final String MAIL_SMTP = "mail_smtp";
 	private static final String MAIL_SMTP_AUTH = "mail_smtp_auth";
@@ -84,6 +101,10 @@ public class ConfigHandler {
 
 		Properties props = loadProperties();
 		if (props.isEmpty()) {
+			// first start without any config file: defaults are used, but the ui manager must still be initialized (otherwise it stays null and the GUI fails to start)
+			if (Program.getInstance().getRuntimeType() != RuntimeType.BATCH) { // batchmode shouldn't access UIManager.class
+				Config.getInstance().initUiManager();
+			}
 			return;
 		}
 
@@ -107,6 +128,7 @@ public class ConfigHandler {
 		cfg.setDefaultFontFamily(getStringProperty(props, DEFAULT_FONTFAMILY, cfg.getDefaultFontFamily()));
 		SharedConfig.getInstance().setShow_stickingpolygon(getBoolProperty(props, SHOW_STICKINGPOLYGON, SharedConfig.getInstance().isShow_stickingpolygon()));
 		cfg.setShow_grid(getBoolProperty(props, SHOW_GRID, cfg.isShow_grid()));
+		SharedConfig.getInstance().setAutofitShapes(getBoolProperty(props, AUTOFIT_SHAPES, SharedConfig.getInstance().isAutofitShapes()));
 		cfg.setEnable_custom_elements(getBoolProperty(props, ENABLE_CUSTOM_ELEMENTS, cfg.isEnable_custom_elements()));
 		cfg.setPropertiesPanelLineWrap(getBoolProperty(props, PROPERTIES_PANEL_LINE_WRAP, cfg.isPropertiesPanelLineWrap()));
 		cfg.setPropertiesPanelLineNumbers(getBoolProperty(props, PROPERTIES_PANEL_LINE_NUMBERS, cfg.isPropertiesPanelLineNumbers()));
@@ -137,6 +159,29 @@ public class ConfigHandler {
 			cfg.setProgram_size(getDimensionProperty(props, PROGRAM_SIZE, cfg.getProgram_size()));
 			cfg.setProgram_location(getPointProperty(props, PROGRAM_LOCATION, cfg.getProgram_location()));
 		}
+
+		cfg.setOpenPreviousFiles(getBoolProperty(props, OPEN_PREVIOUS_FILES, cfg.isOpenPreviousFiles()));
+		cfg.setSelectWithoutCtrl(getBoolProperty(props, SELECT_WITHOUT_CTRL, cfg.isSelectWithoutCtrl()));
+		cfg.setMultiSelectWithShift(getBoolProperty(props, MULTI_SELECT_WITH_SHIFT, cfg.isMultiSelectWithShift()));
+		cfg.setAutocompleteWhileTyping(getBoolProperty(props, AUTOCOMPLETE_WHILE_TYPING, cfg.isAutocompleteWhileTyping()));
+		cfg.setTypeIntoProperties(getBoolProperty(props, TYPE_INTO_PROPERTIES, cfg.isTypeIntoProperties()));
+		cfg.setAutosave(getBoolProperty(props, AUTOSAVE, cfg.isAutosave()));
+		if (props.getProperty(AUTOSAVE_SECONDS) == null && props.getProperty(AUTOSAVE_MINUTES_OLD) != null) {
+			cfg.setAutosaveSeconds(getIntProperty(props, AUTOSAVE_MINUTES_OLD, cfg.getAutosaveSeconds() / 60) * 60); // convert the old setting
+		}
+		else {
+			cfg.setAutosaveSeconds(getIntProperty(props, AUTOSAVE_SECONDS, cfg.getAutosaveSeconds()));
+		}
+		try {
+			cfg.setPaletteInsertPosition(PaletteInsertPosition.valueOf(getStringProperty(props, PALETTE_INSERT_POSITION, cfg.getPaletteInsertPosition().name())));
+		} catch (IllegalArgumentException e) {
+			// invalid value in a manually edited config: keep the default, it must never prevent the start
+		}
+		String lastOpenFiles = props.getProperty(LAST_OPEN_FILES);
+		if (lastOpenFiles != null && !lastOpenFiles.isEmpty()) {
+			cfg.setLastOpenFiles(new ArrayList<String>(Arrays.asList(lastOpenFiles.split("\\|"))));
+		}
+		cfg.setLastActiveFile(getStringProperty(props, LAST_ACTIVE_FILE, cfg.getLastActiveFile()));
 
 		String recentFiles = props.getProperty(RECENT_FILES);
 		if (recentFiles != null) {
@@ -189,6 +234,7 @@ public class ConfigHandler {
 			props.setProperty(DEFAULT_FONTFAMILY, cfg.getDefaultFontFamily());
 			props.setProperty(SHOW_STICKINGPOLYGON, Boolean.toString(SharedConfig.getInstance().isShow_stickingpolygon()));
 			props.setProperty(SHOW_GRID, Boolean.toString(cfg.isShow_grid()));
+			props.setProperty(AUTOFIT_SHAPES, Boolean.toString(SharedConfig.getInstance().isAutofitShapes()));
 			props.setProperty(ENABLE_CUSTOM_ELEMENTS, Boolean.toString(cfg.isEnable_custom_elements()));
 			props.setProperty(PROPERTIES_PANEL_LINE_WRAP, Boolean.toString(cfg.isPropertiesPanelLineWrap()));
 			props.setProperty(PROPERTIES_PANEL_LINE_NUMBERS, Boolean.toString(cfg.isPropertiesPanelLineNumbers()));
@@ -219,6 +265,30 @@ public class ConfigHandler {
 					props.setProperty(START_MAXIMIZED, "false");
 					props.setProperty(PROGRAM_SIZE, topContainer.getSize().width + "," + topContainer.getSize().height);
 					props.setProperty(PROGRAM_LOCATION, topContainer.getLocation().x + "," + topContainer.getLocation().y);
+				}
+			}
+			props.setProperty(OPEN_PREVIOUS_FILES, Boolean.toString(cfg.isOpenPreviousFiles()));
+			props.setProperty(SELECT_WITHOUT_CTRL, Boolean.toString(cfg.isSelectWithoutCtrl()));
+			props.setProperty(MULTI_SELECT_WITH_SHIFT, Boolean.toString(cfg.isMultiSelectWithShift()));
+			props.setProperty(AUTOCOMPLETE_WHILE_TYPING, Boolean.toString(cfg.isAutocompleteWhileTyping()));
+			props.setProperty(TYPE_INTO_PROPERTIES, Boolean.toString(cfg.isTypeIntoProperties()));
+			props.setProperty(AUTOSAVE, Boolean.toString(cfg.isAutosave()));
+			props.setProperty(AUTOSAVE_SECONDS, Integer.toString(cfg.getAutosaveSeconds()));
+			props.setProperty(PALETTE_INSERT_POSITION, cfg.getPaletteInsertPosition().name());
+			// remember the saved diagrams which are open right now (diagrams which have never been saved have no path and cannot be restored)
+			StringBuilder openFiles = new StringBuilder();
+			for (DiagramHandler diagram : Main.getInstance().getDiagrams()) {
+				String path = diagram.getFullPathName();
+				if (!path.isEmpty() && new File(path).isFile()) {
+					openFiles.append(path).append("|");
+				}
+			}
+			if (openFiles.length() > 0) {
+				openFiles.setLength(openFiles.length() - 1);
+				props.setProperty(LAST_OPEN_FILES, openFiles.toString());
+				DiagramHandler current = CurrentDiagram.getInstance().getDiagramHandler();
+				if (current != null && !current.getFullPathName().isEmpty() && openFiles.indexOf(current.getFullPathName()) >= 0) {
+					props.setProperty(LAST_ACTIVE_FILE, current.getFullPathName());
 				}
 			}
 			if (!RecentlyUsedFilesList.getInstance().isEmpty()) {

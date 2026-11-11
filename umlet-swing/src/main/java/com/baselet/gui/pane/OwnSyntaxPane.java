@@ -3,10 +3,15 @@ package com.baselet.gui.pane;
 import java.awt.Color;
 import java.awt.Component;
 import java.awt.FlowLayout;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
 import java.util.ArrayList;
+import java.util.Base64;
 import java.util.List;
 
+import javax.imageio.ImageIO;
 import javax.swing.BoxLayout;
+import javax.swing.ImageIcon;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.ScrollPaneConstants;
@@ -47,6 +52,8 @@ public class OwnSyntaxPane {
 
 	List<AutocompletionText> words = new ArrayList<AutocompletionText>();
 
+	private AutoCompletion autoCompletion;
+
 	JPanel panel;
 	RSyntaxTextArea textArea;
 	RTextScrollPane scrollPane;
@@ -79,8 +86,13 @@ public class OwnSyntaxPane {
 
 		// Setup autocompletion
 		createAutocompletionCompletionProvider();
-		AutoCompletion ac = new AutoCompletion(provider);
+		provider.setAutoActivationRules(true, "=<>-."); // without rules (default) the auto activation popup never opens
+		autoCompletion = new AutoCompletion(provider);
+		AutoCompletion ac = autoCompletion;
 		// ac.setShowDescWindow(true);
+		updateAutocompleteWhileTyping();
+		ac.setAutoActivationDelay(200);
+		ac.setAutoCompleteSingleChoices(false);
 		ac.install(textArea);
 
 		JLabel propertyLabel = new JLabel(" Properties");
@@ -105,12 +117,29 @@ public class OwnSyntaxPane {
 		textArea.getDocument().putProperty(PlainDocument.tabSizeAttribute, 3); // Reduce tab size
 	}
 
+	/**
+	 * Applies the config option which defines if the suggestions are shown automatically while typing (like umletino/VS Code).
+	 * If it is switched off, the suggestions are only shown with Ctrl+Space.
+	 */
+	public void updateAutocompleteWhileTyping() {
+		autoCompletion.setAutoActivationEnabled(Config.getInstance().isAutocompleteWhileTyping());
+	}
+
 	public void setLineHighlightColor(boolean darkMode) {
 		if (darkMode) {
 			textArea.setCurrentLineHighlightColor(new Color(153, 102, 0));
+			// the default selection color of the dark theme is a pale color which is hard to distinguish from the light text
+			textArea.setSelectionColor(new Color(33, 66, 131));
+			textArea.setSelectedTextColor(Color.WHITE);
+			textArea.setUseSelectedTextColor(true);
 		}
 		else {
 			textArea.setCurrentLineHighlightColor(new Color(255, 255, 153));
+			Color defaultSelection = javax.swing.UIManager.getColor("TextArea.selectionBackground");
+			if (defaultSelection != null) {
+				textArea.setSelectionColor(defaultSelection);
+			}
+			textArea.setUseSelectedTextColor(false);
 		}
 	}
 
@@ -121,7 +150,7 @@ public class OwnSyntaxPane {
 	private void createAutocompletionCompletionProvider() {
 		provider.clear();
 		for (AutocompletionText word : words) {
-			provider.addCompletion(new BasicCompletion(provider, word.getText(), word.getInfo()) {
+			BasicCompletion completion = new BasicCompletion(provider, word.getText(), word.getInfo()) {
 				@Override
 				public String toString() {
 					if (getShortDescription() == null) {
@@ -129,9 +158,26 @@ public class OwnSyntaxPane {
 					}
 					return getInputText() + SEPARATOR + getShortDescription();
 				}
-			});
+			};
+			ImageIcon icon = createIcon(word.getBase64Img());
+			if (icon != null) {
+				completion.setIcon(icon);
+			}
+			provider.addCompletion(completion);
 		}
 
+	}
+
+	private static ImageIcon createIcon(String base64Img) {
+		if (base64Img == null) {
+			return null;
+		}
+		try {
+			BufferedImage img = ImageIO.read(new ByteArrayInputStream(Base64.getDecoder().decode(base64Img)));
+			return img == null ? null : new ImageIcon(img);
+		} catch (Exception e) { // a broken preview image must never break autocompletion
+			return null;
+		}
 	}
 
 	private void createHightLightMap() {

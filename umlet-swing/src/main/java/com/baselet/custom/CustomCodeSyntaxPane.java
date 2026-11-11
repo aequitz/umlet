@@ -60,9 +60,18 @@ public class CustomCodeSyntaxPane {
 	public void setLineHighlightColor(boolean darkMode) {
 		if (darkMode) {
 			textArea.setCurrentLineHighlightColor(new Color(153, 102, 0));
+			// the default selection color of the dark theme is a pale color which is hard to distinguish from the light text
+			textArea.setSelectionColor(new Color(33, 66, 131));
+			textArea.setSelectedTextColor(Color.WHITE);
+			textArea.setUseSelectedTextColor(true);
 		}
 		else {
 			textArea.setCurrentLineHighlightColor(new Color(255, 255, 153));
+			Color defaultSelection = javax.swing.UIManager.getColor("TextArea.selectionBackground");
+			if (defaultSelection != null) {
+				textArea.setSelectionColor(defaultSelection);
+			}
+			textArea.setUseSelectedTextColor(false);
 		}
 	}
 

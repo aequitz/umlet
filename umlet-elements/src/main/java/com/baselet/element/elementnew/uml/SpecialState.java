@@ -2,6 +2,7 @@ package com.baselet.element.elementnew.uml;
 
 import java.util.List;
 
+import com.baselet.control.enums.ElementStyle;
 import com.baselet.control.enums.ElementId;
 import com.baselet.element.NewGridElement;
 import com.baselet.element.facet.Facet;
@@ -23,6 +24,11 @@ public class SpecialState extends NewGridElement {
 	@Override
 	protected Settings createSettings() {
 		return new SettingsManualresizeCenter() {
+			@Override
+			public ElementStyle getElementStyle() {
+				return ElementStyle.SIMPLE; // no text, so autoresize would collapse the element
+			}
+
 			@Override
 			protected List<Facet> createFacets() {
 				return listOf(super.createFacets(), SpecialStateTypeFacet.INSTANCE);

@@ -27,6 +27,9 @@ import static com.baselet.control.constants.MenuConstants.ONLINE_HELP;
 import static com.baselet.control.constants.MenuConstants.ONLINE_SAMPLE_DIAGRAMS;
 import static com.baselet.control.constants.MenuConstants.OPEN;
 import static com.baselet.control.constants.MenuConstants.OPTIONS;
+import static com.baselet.control.constants.MenuConstants.AUTOSAVE;
+import static com.baselet.control.constants.MenuConstants.COPY_AS_IMAGE;
+import static com.baselet.control.constants.MenuConstants.DUPLICATE;
 import static com.baselet.control.constants.MenuConstants.PASTE;
 import static com.baselet.control.constants.MenuConstants.PRINT;
 import static com.baselet.control.constants.MenuConstants.PROGRAM_HOMEPAGE;
@@ -44,12 +47,14 @@ import static com.baselet.control.constants.MenuConstants.VIDEO_TUTORIAL;
 
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
+import java.awt.event.InputEvent;
 import java.awt.event.KeyEvent;
 import java.util.Arrays;
 import java.util.Iterator;
 import java.util.Locale;
 
 import javax.swing.AbstractAction;
+import javax.swing.JCheckBoxMenuItem;
 import javax.swing.JComponent;
 import javax.swing.JMenu;
 import javax.swing.JMenuItem;
@@ -57,11 +62,14 @@ import javax.swing.KeyStroke;
 import javax.swing.event.MenuEvent;
 import javax.swing.event.MenuListener;
 
+import com.baselet.control.AutoSaver;
 import com.baselet.control.Main;
+import com.baselet.control.config.Config;
 import com.baselet.control.constants.Constants;
 import com.baselet.control.constants.SystemInfo;
 import com.baselet.control.enums.Os;
 import com.baselet.control.util.RecentlyUsedFilesList;
+import com.baselet.diagram.Notifier;
 import com.baselet.diagram.draw.helper.theme.Theme;
 import com.baselet.diagram.draw.helper.theme.ThemeFactory;
 import com.baselet.gui.helper.PlainColorIcon;
@@ -125,6 +133,34 @@ public class MenuFactorySwing extends MenuFactory {
 
 	public JMenuItem createSave() {
 		return createJMenuItem(true, SAVE, KeyEvent.VK_S, true, null);
+	}
+
+	private JCheckBoxMenuItem autosaveMenuItem;
+
+	/**
+	 * checkbox menu item to switch autosave on and off (the interval can be configured in the options)
+	 */
+	public JCheckBoxMenuItem createAutosave() {
+		autosaveMenuItem = new JCheckBoxMenuItem(AUTOSAVE, Config.getInstance().isAutosave());
+		autosaveMenuItem.setMnemonic(KeyEvent.VK_U);
+		autosaveMenuItem.addActionListener(new ActionListener() {
+			@Override
+			public void actionPerformed(ActionEvent e) {
+				Config.getInstance().setAutosave(autosaveMenuItem.isSelected());
+				AutoSaver.getInstance().restart();
+				Notifier.getInstance().showInfo(autosaveMenuItem.isSelected() ? "Autosave enabled (every " + Config.getInstance().getAutosaveSeconds() + " s)" : "Autosave disabled");
+			}
+		});
+		return autosaveMenuItem;
+	}
+
+	/**
+	 * must be called after the autosave setting has been changed somewhere else (e.g. in the options)
+	 */
+	public void updateAutosaveMenuItem() {
+		if (autosaveMenuItem != null) {
+			autosaveMenuItem.setSelected(Config.getInstance().isAutosave());
+		}
 	}
 
 	public JMenuItem createSaveAs() {
@@ -229,8 +265,18 @@ public class MenuFactorySwing extends MenuFactory {
 		return createJMenuItem(false, COPY, KeyEvent.VK_C, true, null);
 	}
 
+	public JMenuItem createCopyAsImage() {
+		JMenuItem item = createJMenuItem(false, COPY_AS_IMAGE, COPY_AS_IMAGE, KeyEvent.VK_I, KeyEvent.VK_C, true, null);
+		item.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_C, SystemInfo.META_KEY.getMask() | InputEvent.SHIFT_DOWN_MASK)); // ctrl+shift+c
+		return item;
+	}
+
 	public JMenuItem createPaste(boolean usedRightClickContextMenu) {
 		return createJMenuItem(false, PASTE, PASTE, KeyEvent.VK_P, KeyEvent.VK_V, true, usedRightClickContextMenu);
+	}
+
+	public JMenuItem createDuplicate() {
+		return createJMenuItem(false, DUPLICATE, DUPLICATE, KeyEvent.VK_L, KeyEvent.VK_D, true, null);
 	}
 
 	public JMenuItem createNewCustomElement() {

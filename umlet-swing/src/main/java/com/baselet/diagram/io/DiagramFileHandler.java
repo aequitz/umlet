@@ -94,27 +94,90 @@ public class DiagramFileHandler {
 		return new DiagramFileHandler(diagramHandler, file);
 	}
 
-	private JFileChooser createSaveFileChooser(boolean exportCall, String filePath) {
-		File initialDirectory;
+	private File calcSaveDialogDirectory(boolean exportCall, String filePath) {
 		if (filePath != null && !filePath.isEmpty()) {
-			initialDirectory = new File(directory(filePath));
+			return new File(directory(filePath));
 		}
-		else {
-			initialDirectory = calcInitialDir(exportCall);
+		return calcInitialDir(exportCall);
+	}
+
+	/**
+	 * The input field of the dialog should show the diagram name as preset (without extension)
+	 */
+	private String calcSaveDialogPresetName(String filePath) {
+		if (filePath != null && !filePath.isEmpty()) {
+			return filename(filePath);
+		}
+		return CurrentDiagram.getInstance().getDiagramHandler().getName();
+	}
+
+	private JFileChooser createSaveFileChooser(boolean exportCall, String filePath) {
+		JFileChooser fileChooser = new JFileChooser(calcSaveDialogDirectory(exportCall, filePath));
+		fileChooser.setAcceptAllFileFilterUsed(false); // We don't want "all files" as a choice
+		fileChooser.setSelectedFile(new File(calcSaveDialogPresetName(filePath)));
+		return fileChooser;
+	}
+
+	/**
+	 * Result of the Windows Explorer style save dialog
+	 */
+	private static class ExplorerChoice {
+		private final String fileName;
+		private final String extension;
+
+		ExplorerChoice(String fileName, String extension) {
+			this.fileName = fileName;
+			this.extension = extension;
+		}
+	}
+
+	/**
+	 * Shows the Windows Explorer style save dialog (see {@link ExplorerFileDialog}).
+	 * @return null if this dialog is not available (the caller must use the Swing dialog); a choice with a null filename if the user cancelled
+	 */
+	private ExplorerChoice chooseFileNameWithExplorerDialog(boolean ownXmlFormat, FileFilter preselectedFilter, boolean exportCall, String filePath) {
+		List<OwnFileFilter> dialogFilters = new ArrayList<OwnFileFilter>(Arrays.asList(ownXmlFormat ? saveFileFilter : exportFileFilter)); // same file types as the Swing dialog (see setAvailableFileFilters)
+		StringBuilder filterString = new StringBuilder();
+		for (OwnFileFilter filter : dialogFilters) {
+			if (filterString.length() > 0) {
+				filterString.append("|");
+			}
+			filterString.append(filter.getDescription()).append("|*.").append(filter.getFormat());
 		}
 
-		JFileChooser fileChooser = new JFileChooser(initialDirectory);
-		fileChooser.setAcceptAllFileFilterUsed(false); // We don't want "all files" as a choice
-		// The input field should show the diagram name as preset
-		File selectedFile;
-		if (filePath != null && !filePath.isEmpty()) {
-			selectedFile = new File(filename(filePath));
+		File directory = calcSaveDialogDirectory(exportCall, filePath);
+		if (directory != null && !directory.isDirectory()) {
+			directory = directory.getParentFile();
 		}
-		else {
-			selectedFile = new File(CurrentDiagram.getInstance().getDiagramHandler().getName());
+		String directoryString = directory == null ? "" : directory.getAbsolutePath();
+		String presetName = calcSaveDialogPresetName(filePath);
+		String title = ownXmlFormat ? "Save " + Program.getInstance().getProgramName() + " diagram" : "Export diagram";
+		int selectedIndex = Math.max(dialogFilters.indexOf(preselectedFilter), 0);
+
+		while (true) {
+			ExplorerFileDialog.Result result = ExplorerFileDialog.showSaveDialog(title, filterString.toString(), selectedIndex, directoryString, presetName);
+			if (result.getOutcome() == ExplorerFileDialog.Outcome.UNAVAILABLE) {
+				return null;
+			}
+			if (result.getOutcome() == ExplorerFileDialog.Outcome.CANCELLED) {
+				return new ExplorerChoice(null, null);
+			}
+			int filterIndex = Math.min(result.getFilterIndex(), dialogFilters.size() - 1);
+			String extension = dialogFilters.get(filterIndex).getFormat();
+			String chosenPath = result.getFiles().get(0);
+			String pathWithExtension = chosenPath.endsWith("." + extension) ? chosenPath : chosenPath + "." + extension;
+			// the dialog already asked for an overwrite confirmation of the name the user entered; if the extension was added afterwards, the final name must be checked too
+			if (!pathWithExtension.equals(chosenPath) && new File(pathWithExtension).exists()) {
+				int overwriteQuestionResult = JOptionPane.showConfirmDialog(CurrentGui.getInstance().getGui().getMainFrame(), "File already exists! Overwrite?", "Overwrite File", JOptionPane.YES_NO_OPTION);
+				if (overwriteQuestionResult == JOptionPane.NO_OPTION) {
+					selectedIndex = filterIndex;
+					directoryString = new File(chosenPath).getParent();
+					presetName = new File(chosenPath).getName();
+					continue; // show the dialog again like the Swing dialog does
+				}
+			}
+			return new ExplorerChoice(pathWithExtension, extension);
 		}
-		fileChooser.setSelectedFile(selectedFile);
-		return fileChooser;
 	}
 
 	private File calcInitialDir(boolean exportCall) {
@@ -282,10 +345,19 @@ public class DiagramFileHandler {
 
 	public String doSaveAs(String filePath, String extension) throws IOException {
 		boolean ownXmlFormat = extension.equals(Program.getInstance().getExtension());
-		JFileChooser fileChooser = createSaveFileChooser(!ownXmlFormat, filePath);
 
-		String chosenFileName = chooseFileName(ownXmlFormat, filters.get(extension), fileChooser);
-		String chosenExtension = fileextensions.get(fileChooser.getFileFilter());
+		String chosenFileName;
+		String chosenExtension;
+		ExplorerChoice explorerChoice = chooseFileNameWithExplorerDialog(ownXmlFormat, filters.get(extension), !ownXmlFormat, filePath);
+		if (explorerChoice != null) { // the Windows Explorer style dialog has been shown
+			chosenFileName = explorerChoice.fileName;
+			chosenExtension = explorerChoice.extension;
+		}
+		else { // fallback: Swing dialog
+			JFileChooser fileChooser = createSaveFileChooser(!ownXmlFormat, filePath);
+			chosenFileName = chooseFileName(ownXmlFormat, filters.get(extension), fileChooser);
+			chosenExtension = fileextensions.get(fileChooser.getFileFilter());
+		}
 		if (chosenFileName == null) {
 			return null; // If the filechooser has been closed without saving
 		}
@@ -349,16 +421,36 @@ public class DiagramFileHandler {
 		save(file, false); // If save is called without a parameter it uses the class variable "file"
 	}
 
+	/**
+	 * Saves the diagram into its existing file without any user interaction and without notifications (used for autosave).
+	 * @return false if the diagram cannot be saved silently because it has not been saved to a file yet
+	 */
+	public boolean doAutosave() throws UnsupportedEncodingException, FileNotFoundException {
+		if (file == null || !file.isFile()) {
+			return false; // saving would need a dialog to choose the file
+		}
+		save(file, false, true);
+		return true;
+	}
+
 	private void save(File saveToFile, boolean tempFile) throws UnsupportedEncodingException, FileNotFoundException {
+		save(saveToFile, tempFile, false);
+	}
+
+	private void save(File saveToFile, boolean tempFile, boolean silent) throws UnsupportedEncodingException, FileNotFoundException {
 		String tmp = createStringToBeSaved();
 		PrintWriter out = new PrintWriter(new OutputStreamWriter(new FileOutputStream(saveToFile), "UTF-8"));
 		out.print(tmp);
 		out.close();
 		if (!tempFile) {
 			handler.setChanged(false);
-			RecentlyUsedFilesList.getInstance().add(saveToFile.getAbsolutePath());
+			if (!silent) {
+				RecentlyUsedFilesList.getInstance().add(saveToFile.getAbsolutePath());
+			}
 		}
-		Notifier.getInstance().showInfo(saveToFile.getAbsolutePath() + " saved");
+		if (!silent) {
+			Notifier.getInstance().showInfo(saveToFile.getAbsolutePath() + " saved");
+		}
 	}
 
 	private String chooseFileName(boolean ownXmlFormat, FileFilter filefilter, JFileChooser fileChooser) {

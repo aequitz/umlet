@@ -72,6 +72,7 @@ public abstract class BaseGUI {
 		if (!(HandlerElementMap.getHandlerForElement(e) instanceof CustomPreviewHandler)) {
 			contextMenu.add(menuFactory.createDelete());
 			contextMenu.add(menuFactory.createCopy());
+			contextMenu.add(menuFactory.createCopyAsImage());
 			contextMenu.add(menuFactory.createCut());
 		}
 		JMenuItem group = menuFactory.createGroup();

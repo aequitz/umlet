@@ -28,12 +28,19 @@ public class DiagramListener extends UniversalListener implements MouseWheelList
 		super(handler);
 	}
 
+	private boolean moveDiagram = false; // only used in lasso mode: true while the whole diagram is dragged
+
 	@Override
 	public void mousePressed(MouseEvent me) {
 		super.mousePressed(me);
 
+		if (isLassoByDefaultMode()) {
+			mousePressedLassoMode(me);
+			return;
+		}
+
 		// If some elements are selected, and the selector key (ctrl or meta) is still hold, don't deselect all elements if the drawpanel was clicked
-		if (!selector.getSelectedElements().isEmpty() && (me.getModifiers() & SystemInfo.META_KEY.getMask()) != 0) {
+		if (!selector.getSelectedElements().isEmpty() && isMultiSelectKeyDown(me)) {
 			return;
 		}
 
@@ -44,13 +51,43 @@ public class DiagramListener extends UniversalListener implements MouseWheelList
 		}
 		selector.updateSelectorInformation(); // after everything is deselected updateSelectorInformation (to update property panel content)
 
-		if ((me.getModifiers() & SystemInfo.META_KEY.getMask()) != 0) {
+		if (isMultiSelectKeyDown(me)) {
 			SelectorFrame selframe = selector.getSelectorFrame();
 			selframe.setLocation(getOffset(me).getX(), getOffset(me).getY());
 			selframe.setSize(1, 1);
 			((JComponent) me.getComponent()).add(selframe, 0);
 			selector.setSelectorFrameActive(true);
 		}
+	}
+
+	/**
+	 * Lasso mode (see {@link #isLassoByDefaultMode()}): a drag draws the lasso (replacing the current selection) and ctrl+drag (or dragging with another mouse button) moves the whole diagram.
+	 */
+	private void mousePressedLassoMode(MouseEvent me) {
+		boolean ctrl = (me.getModifiers() & SystemInfo.META_KEY.getMask()) != 0;
+		moveDiagram = ctrl || me.getButton() != MouseEvent.BUTTON1;
+		if (moveDiagram) {
+			return; // selection stays untouched while moving
+		}
+
+		// deselect elements of all drawpanels
+		selector.deselectAll();
+		for (DiagramHandler h : Main.getInstance().getDiagramsAndPalettes()) {
+			h.getDrawPanel().getSelector().deselectAllWithoutUpdatePropertyPanel();
+		}
+		selector.updateSelectorInformation(); // after everything is deselected updateSelectorInformation (to update property panel content)
+
+		SelectorFrame selframe = selector.getSelectorFrame();
+		selframe.setLocation(getOffset(me).getX(), getOffset(me).getY());
+		selframe.setSize(1, 1);
+		((JComponent) me.getComponent()).add(selframe, 0);
+		selector.setSelectorFrameActive(true);
+	}
+
+	@Override
+	public void mouseReleased(MouseEvent me) {
+		super.mouseReleased(me);
+		moveDiagram = false;
 	}
 
 	@Override
@@ -63,7 +100,9 @@ public class DiagramListener extends UniversalListener implements MouseWheelList
 	public void mouseDragged(MouseEvent me) {
 		super.mouseDragged(me);
 		log.debug("mouseDragged!!");
-		dragDiagram();
+		if (!isLassoByDefaultMode() || moveDiagram) {
+			dragDiagram();
+		}
 	}
 
 	@Override

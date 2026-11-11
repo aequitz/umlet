@@ -166,6 +166,33 @@ public class DiagramHandler {
 		}
 	}
 
+	/**
+	 * Saves this diagram into its file if it has been changed (used for autosave).
+	 * In contrast to {@link #doSave()} this never shows a dialog or notification and does not touch the selection or the property panel.
+	 * @return true if the diagram has been saved
+	 */
+	public boolean doAutosave() {
+		if (!isChanged || drawpanel.getGridElements().isEmpty()) { // an empty diagram is never autosaved, because it would overwrite the file with nothing
+			return false;
+		}
+		try {
+			if (!fileHandler.doAutosave()) {
+				return false;
+			}
+			// palettes which show the same file must be updated like after a manual save (the selection of this diagram is not touched)
+			for (DiagramHandler palette : Main.getInstance().getPalettes().values()) {
+				if (palette.getFileHandler().equals(getFileHandler()) && !palette.equals(this)) {
+					palette.reload();
+				}
+			}
+			return true;
+		} catch (IOException e) {
+			log.error("Autosave failed: " + getFullPathName(), e);
+			Notifier.getInstance().showError("Autosave of " + getFullPathName() + " failed: " + e.getMessage());
+			return false;
+		}
+	}
+
 	public String doSaveAs(String filePath, String extension) {
 		if (drawpanel.getGridElements().isEmpty()) {
 			displayError(ErrorMessages.ERROR_SAVING_EMPTY_DIAGRAM);

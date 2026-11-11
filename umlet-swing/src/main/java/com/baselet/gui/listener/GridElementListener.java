@@ -2,6 +2,7 @@ package com.baselet.gui.listener;
 
 import java.awt.Component;
 import java.awt.event.MouseEvent;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
@@ -19,7 +20,6 @@ import com.baselet.control.basics.Converter;
 import com.baselet.control.basics.geom.Point;
 import com.baselet.control.basics.geom.Rectangle;
 import com.baselet.control.config.SharedConfig;
-import com.baselet.control.constants.SystemInfo;
 import com.baselet.control.enums.Direction;
 import com.baselet.diagram.CurrentDiagram;
 import com.baselet.diagram.DiagramHandler;
@@ -160,16 +160,49 @@ public class GridElementListener extends UniversalListener {
 		}
 	}
 
+	/**
+	 * Lasso mode (see {@link #isLassoByDefaultMode()}): dragging an element moves it (or resizes it if the drag starts at its border/handles).
+	 * Ctrl+click adds the element to the selection or removes it (like in the classic mode, but without starting a lasso, so dragging afterwards moves the selection).
+	 * Shift is not used for selecting (it keeps its meaning of proportional resizing at a resize handle and of disabling sticking while dragging).
+	 */
+	private void pressedLeftButtonLassoMode(MouseEvent me, GridElement e) {
+		boolean onResizeArea = !e.getResizeArea(me.getX(), me.getY()).isEmpty();
+		boolean multiSelect = isMultiSelectKeyDown(me) && !onResizeArea;
+
+		IS_DRAGGING = true;
+
+		if (multiSelect) {
+			if (selector.isSelected(e)) {
+				DESELECT_MULTISEL = true;
+			}
+			else {
+				selector.select(e);
+			}
+		}
+
+		if (!selector.getSelectedElements().contains(e)) {
+			selector.selectOnly(e);
+		}
+		else {
+			selector.updateSelectorInformation(e);
+		}
+	}
+
 	private void pressedLeftButton(MouseEvent me) {
 		GridElement e = getGridElement(me);
 
+		if (isLassoByDefaultMode()) {
+			pressedLeftButtonLassoMode(me, e);
+			return;
+		}
+
 		// Ctrl + Mouseclick initializes the lasso
-		if ((me.getModifiers() & SystemInfo.META_KEY.getMask()) != 0) {
+		if (isMultiSelectKeyDown(me)) {
 			initializeLasso();
 		}
 
 		IS_DRAGGING = true;
-		if ((me.getModifiers() & SystemInfo.META_KEY.getMask()) != 0) {
+		if (isMultiSelectKeyDown(me)) {
 			if (selector.isSelected(e)) {
 				DESELECT_MULTISEL = true;
 			}
@@ -208,7 +241,7 @@ public class GridElementListener extends UniversalListener {
 
 		GridElement e = getGridElement(me);
 
-		if ((me.getModifiers() & SystemInfo.META_KEY.getMask()) != 0) {
+		if (isMultiSelectKeyDown(me) || isLassoByDefaultMode()) {
 			if (selector.isSelected(e) && DESELECT_MULTISEL) {
 				selector.deselect(e);
 			}
@@ -286,8 +319,20 @@ public class GridElementListener extends UniversalListener {
 		Vector<OldMoveLinePoint> linepointCommands = new Vector<OldMoveLinePoint>();
 		List<com.baselet.element.relation.Relation> stickables = handler.getDrawPanel().getStickables(entitiesToBeMoved);
 		for (GridElement ge : entitiesToBeMoved) {
+			// sticking polygons of all elements which are not moved (a sticking point which is nearer to one of them must not be taken along)
+			List<StickingPolygon> otherPolygons = new ArrayList<StickingPolygon>();
+			List<StickingPolygon> olderPolygons = new ArrayList<StickingPolygon>(); // elements which were added before ge win ties
+			int geIndex = handler.getDrawPanel().getGridElements().indexOf(ge);
+			List<GridElement> allElements = handler.getDrawPanel().getGridElements();
+			for (int i = 0; i < allElements.size(); i++) {
+				GridElement other = allElements.get(i);
+				if (other == ge || entitiesToBeMoved.contains(other) || other instanceof com.baselet.element.relation.Relation) {
+					continue;
+				}
+				(i < geIndex ? olderPolygons : otherPolygons).add(other.generateStickingBorder());
+			}
 			// reduce stickables to those which really stick at the element at move-start
-			StickableMap stickingStickables = Stickables.getStickingPointsWhichAreConnectedToStickingPolygon(ge.generateStickingBorder(), stickables);
+			StickableMap stickingStickables = Stickables.getStickingPointsWhichAreConnectedToStickingPolygon(ge.generateStickingBorder(), stickables, otherPolygons, olderPolygons);
 			moveCommands.add(new Move(directions, ge, diffx, diffy, oldp, isShiftKeyDown, true, useSetLocation, stickingStickables));
 
 			handleStickingOfOldRelation(diffx, diffy, entitiesToBeMoved, handler, directions, linepointCommands, ge);

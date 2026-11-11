@@ -3,6 +3,7 @@ package com.baselet.element.elementnew.plot;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.baselet.control.enums.ElementStyle;
 import com.baselet.util.logging.Logger;
 import com.baselet.util.logging.LoggerFactory;
 
@@ -293,6 +294,10 @@ public class PlotGrid extends NewGridElement {
 	@Override
 	protected Settings createSettings() {
 		return new SettingsManualresizeCenter() {
+			@Override
+			public ElementStyle getElementStyle() {
+				return ElementStyle.SIMPLE; // plots keep their manually defined size
+			}
 
 			@Override
 			protected List<Facet> createFacets() {
