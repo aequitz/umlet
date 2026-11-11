@@ -107,6 +107,11 @@ public class OldRelationListener extends GridElementListener {
 		}
 	}
 
+	@Override
+	protected boolean isLassoByDefaultMode() {
+		return false; // old relations handle dragging of lines and linepoints on their own
+	}
+
 	private boolean IS_DRAGGING_LINEPOINT = false;
 	private boolean IS_DRAGGING_LINE = false;
 	private int LINEPOINT = -1;

@@ -9,6 +9,7 @@ public class SharedConfig {
 
 	private boolean show_stickingpolygon = true;
 	private boolean stickingEnabled = true;
+	private boolean autofitShapes = true; // if true, shapes (class, state, use case, ...) are resized to fit their text unless the element defines a style
 	private boolean dev_mode = false; // TODO should be moved to a shared config class
 
 	private SharedConfig() {}
@@ -27,6 +28,14 @@ public class SharedConfig {
 
 	public void setStickingEnabled(boolean stickingEnabled) {
 		this.stickingEnabled = stickingEnabled;
+	}
+
+	public boolean isAutofitShapes() {
+		return autofitShapes;
+	}
+
+	public void setAutofitShapes(boolean autofitShapes) {
+		this.autofitShapes = autofitShapes;
 	}
 
 	public boolean isDev_mode() {

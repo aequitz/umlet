@@ -1,5 +1,6 @@
 package com.baselet.gui.listener;
 
+import java.awt.Dimension;
 import java.awt.Point;
 import java.awt.event.MouseEvent;
 import java.util.HashMap;
@@ -9,6 +10,8 @@ import java.util.Map;
 import java.util.Vector;
 
 import com.baselet.control.basics.geom.Rectangle;
+import com.baselet.control.config.Config;
+import com.baselet.control.config.PaletteInsertPosition;
 import com.baselet.control.constants.Constants;
 import com.baselet.diagram.CurrentDiagram;
 import com.baselet.diagram.DiagramHandler;
@@ -174,9 +177,26 @@ public class PaletteEntityListener extends GridElementListener {
 		Point viewp = currentDiagram.getScrollPane().getViewport().getViewPosition();
 		int upperLeftX = (int) (viewp.getX() - viewp.getX() % oldZoomDiagram);
 		int upperLeftY = (int) (viewp.getY() - viewp.getY() % oldZoomDiagram);
-		cmd = new AddElement(e,
-				handler.realignToGrid((upperLeftX / oldZoomDiagram + Constants.PASTE_DISPLACEMENT_GRIDS) * Constants.DEFAULTGRIDSIZE),
-				handler.realignToGrid((upperLeftY / oldZoomDiagram + Constants.PASTE_DISPLACEMENT_GRIDS) * Constants.DEFAULTGRIDSIZE));
+		// position of the visible area in grid cells; the position of the new element is calculated in default zoom (the zoom was reset above)
+		int leftGrids = upperLeftX / oldZoomDiagram + Constants.PASTE_DISPLACEMENT_GRIDS;
+		int topGrids = upperLeftY / oldZoomDiagram + Constants.PASTE_DISPLACEMENT_GRIDS;
+		int x = leftGrids * Constants.DEFAULTGRIDSIZE;
+		int y = topGrids * Constants.DEFAULTGRIDSIZE;
+		Dimension visibleSize = currentDiagram.getScrollPane().getViewport().getExtentSize();
+		int rightGrids = (int) ((viewp.getX() + visibleSize.width) / oldZoomDiagram) - Constants.PASTE_DISPLACEMENT_GRIDS;
+		int bottomGrids = (int) ((viewp.getY() + visibleSize.height) / oldZoomDiagram) - Constants.PASTE_DISPLACEMENT_GRIDS;
+		PaletteInsertPosition position = Config.getInstance().getPaletteInsertPosition();
+		if (position == PaletteInsertPosition.TOP_RIGHT) {
+			x = rightGrids * Constants.DEFAULTGRIDSIZE - e.getRectangle().width;
+		}
+		else if (position == PaletteInsertPosition.CENTER) {
+			x = (leftGrids + rightGrids) / 2 * Constants.DEFAULTGRIDSIZE - e.getRectangle().width / 2;
+			y = (topGrids + bottomGrids) / 2 * Constants.DEFAULTGRIDSIZE - e.getRectangle().height / 2;
+		}
+		// the element must never be placed outside of the visible area to the left or top
+		x = Math.max(x, leftGrids * Constants.DEFAULTGRIDSIZE);
+		y = Math.max(y, topGrids * Constants.DEFAULTGRIDSIZE);
+		cmd = new AddElement(e, handler.realignToGrid(x), handler.realignToGrid(y));
 		currentDiagram.getHandler().getController().executeCommand(cmd);
 		currentDiagram.getSelector().selectOnly(e);
 

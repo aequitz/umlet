@@ -27,6 +27,8 @@ import static com.baselet.control.constants.MenuConstants.ONLINE_SAMPLE_DIAGRAMS
 import static com.baselet.control.constants.MenuConstants.OPEN;
 import static com.baselet.control.constants.MenuConstants.OPEN_LINK;
 import static com.baselet.control.constants.MenuConstants.OPTIONS;
+import static com.baselet.control.constants.MenuConstants.COPY_AS_IMAGE;
+import static com.baselet.control.constants.MenuConstants.DUPLICATE;
 import static com.baselet.control.constants.MenuConstants.PASTE;
 import static com.baselet.control.constants.MenuConstants.PRINT;
 import static com.baselet.control.constants.MenuConstants.PROGRAM_HOMEPAGE;
@@ -59,8 +61,11 @@ import com.baselet.control.enums.Program;
 import com.baselet.diagram.CurrentDiagram;
 import com.baselet.diagram.DiagramHandler;
 import com.baselet.diagram.DrawPanel;
+import com.baselet.diagram.Notifier;
+import com.baselet.diagram.PaletteHandler;
 import com.baselet.diagram.SelectorOld;
 import com.baselet.diagram.io.ClassChooser;
+import com.baselet.element.ElementFactorySwing;
 import com.baselet.element.facet.common.GroupFacet;
 import com.baselet.element.facet.common.LayerFacet;
 import com.baselet.element.facet.common.LinkFacet;
@@ -74,8 +79,10 @@ import com.baselet.gui.ExportHandler;
 import com.baselet.gui.OptionPanel;
 import com.baselet.gui.command.Align;
 import com.baselet.gui.command.ChangeElementSetting;
+import com.baselet.gui.command.ClipBoard;
 import com.baselet.gui.command.Copy;
 import com.baselet.gui.command.Cut;
+import com.baselet.gui.command.Duplicate;
 import com.baselet.gui.command.Paste;
 import com.baselet.gui.command.RemoveElement;
 
@@ -172,6 +179,16 @@ public class MenuFactory {
 						actualHandler.getController().executeCommand(new Copy());
 					}
 				}
+				else if (menuItem.equals(COPY_AS_IMAGE) && actualHandler != null) {
+					// like copy: if no element is selected, the whole diagram is copied
+					List<GridElement> toCopy = ElementFactorySwing.createCopy(actualHandler.getDrawPanel().getSelector().getSelectedElements());
+					if (toCopy.isEmpty()) {
+						toCopy = ElementFactorySwing.createCopy(actualHandler.getDrawPanel().getGridElements());
+					}
+					if (ClipBoard.getInstance().copyAsImage(toCopy, actualHandler)) {
+						Notifier.getInstance().showInfo("Copied " + toCopy.size() + " element" + (toCopy.size() == 1 ? "" : "s") + " as image");
+					}
+				}
 				else if (menuItem.equals(PASTE) && actualHandler != null) {
 					Point ctxMenuLocation = new Point(0, 0); // by default there is no ctxmenu displacement (x=0, y=0)
 					if (Boolean.TRUE.equals(arg_param)) { // if ctxmenu was used for the operation calculate and store the ctxMenuLocation
@@ -179,6 +196,12 @@ public class MenuFactory {
 						SwingUtilities.convertPointFromScreen(ctxMenuLocation, actualHandler.getDrawPanel().getScrollPane().getViewport());
 					}
 					actualHandler.getController().executeCommand(new Paste(ctxMenuLocation));
+				}
+				else if (menuItem.equals(DUPLICATE) && actualHandler != null && actualSelector != null && !(actualHandler instanceof PaletteHandler)) {
+					List<GridElement> selected = new ArrayList<GridElement>(actualSelector.getSelectedElements());
+					if (!selected.isEmpty()) {
+						actualHandler.getController().executeCommand(new Duplicate(selected));
+					}
 				}
 				else if (menuItem.equals(NEW_CE)) {
 					if (gui.getCurrentCustomHandler().closeEntity()) {

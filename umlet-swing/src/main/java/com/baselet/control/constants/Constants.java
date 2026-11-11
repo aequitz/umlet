@@ -33,8 +33,9 @@ public abstract class Constants extends SharedConstants {
 				"//" + NEWLINE +
 				"// Double-click on elements to add them to the diagram, or to copy them" + NEWLINE +
 				"// Edit elements by modifying the text in this panel" + NEWLINE +
-				"// Hold " + SystemInfo.META_KEY + " to select multiple elements" + NEWLINE +
-				"// Use " + SystemInfo.META_KEY + "+mouse to select via lasso" + NEWLINE +
+				"// Hold " + SystemInfo.META_KEY + " and click to select multiple elements" + NEWLINE +
+				"// Drag the background to select via lasso" + NEWLINE +
+				"// Hold " + SystemInfo.META_KEY + " and drag the background to move the whole diagram" + NEWLINE +
 				"//" + NEWLINE +
 				"// Use +/- or " + SystemInfo.META_KEY + "+mouse wheel to zoom" + NEWLINE +
 				"// Drag a whole relation at its central square icon" + NEWLINE +
@@ -90,6 +91,7 @@ public abstract class Constants extends SharedConstants {
 	public static final String DELIMITER_ADDITIONAL_ATTRIBUTES = ";";
 
 	public static final int PASTE_DISPLACEMENT_GRIDS = 2;
+	public static final int DUPLICATE_DISPLACEMENT_GRIDS = 2; // distance between an element and its duplicate
 	public static final Color GRID_COLOR_LIGHT = new Color(235, 235, 235);
 	public static final Color GRID_COLOR_DARK = new Color(70, 70, 70);
 	public static final Color DARK_BACKGROUND_COLOR = new Color(40,40,40);

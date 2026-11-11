@@ -53,7 +53,8 @@ public class ChangePanelAttributes extends Command {
 			OwnSyntaxPane pane = CurrentGui.getInstance().getGui().getPropertyPane();
 			pane.switchToElement(gridElement);
 
-			if (pane.getText().length() >= _newCaret) {
+			// only move the caret if necessary: a redundant caret event cancels the pending autocompletion popup
+			if (pane.getText().length() >= _newCaret && pane.getTextComponent().getCaretPosition() != _newCaret) {
 				pane.getTextComponent().setCaretPosition(_newCaret);
 			}
 		}

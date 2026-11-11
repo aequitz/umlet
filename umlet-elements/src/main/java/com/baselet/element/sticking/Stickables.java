@@ -38,6 +38,49 @@ public class Stickables {
 		return returnMap;
 	}
 
+	/**
+	 * Like {@link #getStickingPointsWhichAreConnectedToStickingPolygon(StickingPolygon, Collection)}, but a sticking point is only collected if no other polygon is strictly nearer to it (and no older polygon is equally near).
+	 * This avoids that eg a relation which is connected to element A is also "stolen" by a neighbouring element B (eg a freshly duplicated element) which is only within the sticking tolerance.
+	 */
+	public static StickableMap getStickingPointsWhichAreConnectedToStickingPolygon(StickingPolygon oldStickingPolygon, Collection<? extends Stickable> stickables, Collection<StickingPolygon> otherPolygons, Collection<StickingPolygon> olderPolygons) {
+		int maxDistance = SharedConstants.DEFAULT_GRID_SIZE - 1;
+		StickableMap returnMap = new StickableMap();
+		for (final Stickable stickable : stickables) {
+			for (final PointDoubleIndexed p : stickable.getStickablePoints()) {
+				PointDouble absolutePointPosition = getAbsolutePosition(stickable, p);
+				double ownDistance = getMinDistance(oldStickingPolygon, absolutePointPosition);
+				if (ownDistance >= maxDistance) {
+					continue;
+				}
+				boolean otherIsNearer = false;
+				for (StickingPolygon other : otherPolygons) {
+					if (getMinDistance(other, absolutePointPosition) < ownDistance) {
+						otherIsNearer = true;
+						break;
+					}
+				}
+				// on a tie (point lies on the borders of several elements, eg an element and its freshly duplicated copy) the older element keeps the point
+				for (StickingPolygon older : olderPolygons) {
+					if (!otherIsNearer && getMinDistance(older, absolutePointPosition) <= ownDistance) {
+						otherIsNearer = true;
+					}
+				}
+				if (!otherIsNearer) {
+					returnMap.add(stickable, p);
+				}
+			}
+		}
+		return returnMap;
+	}
+
+	private static double getMinDistance(StickingPolygon polygon, PointDouble point) {
+		double min = Double.MAX_VALUE;
+		for (StickLine sl : polygon.getStickLines()) {
+			min = Math.min(min, sl.getDistanceToPoint(point));
+		}
+		return min;
+	}
+
 	public static Map<Stickable, List<PointChange>> moveStickPointsBasedOnPolygonChanges(StickingPolygon oldStickingPolygon, StickingPolygon newStickingPolygon, StickableMap stickablePointsToCheck, int maxDistance) {
 		// the first drag determines which stickables and which points of them will stick (eg: moving through other relations should NOT "collect" their stickingpoints)
 		if (oldStickingPolygon == null || stickablePointsToCheck == null || stickablePointsToCheck.isEmpty()) {

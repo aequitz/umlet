@@ -30,6 +30,8 @@ public class MenuBuilder {
 	private JMenuItem editCut;
 	private JMenuItem editCopy;
 	private JMenuItem editPaste;
+	private JMenuItem editCopyAsImage;
+	private JMenuItem editDuplicate;
 	private JMenuItem customNew;
 	private JMenu customNewFromTemplate;
 	private JMenuItem customEdit;
@@ -55,6 +57,7 @@ public class MenuBuilder {
 		fileMenu.add(menuFactory.createExport());
 		fileMenu.add(menuFactory.createExportAs());
 		fileMenu.add(menuFactory.createMailTo());
+		fileMenu.add(menuFactory.createAutosave());
 		fileMenu.addSeparator();
 		fileMenu.add(menuFactory.createEditCurrentPalette());
 		fileMenu.addSeparator();
@@ -76,13 +79,16 @@ public class MenuBuilder {
 		editMenu.add(editUngroup = menuFactory.createUngroup());
 		editMenu.addSeparator();
 		editMenu.add(editCopy = menuFactory.createCopy());
+		editMenu.add(editCopyAsImage = menuFactory.createCopyAsImage());
 		editMenu.add(editCut = menuFactory.createCut());
 		editMenu.add(editPaste = menuFactory.createPaste(false));
+		editMenu.add(editDuplicate = menuFactory.createDuplicate());
 		menu.add(editMenu);
 		editDelete.setEnabled(false);
 		editGroup.setEnabled(false);
 		editCut.setEnabled(false);
 		editPaste.setEnabled(false);
+		editDuplicate.setEnabled(false);
 		editUngroup.setEnabled(false);
 
 		// Custom Element Menu
@@ -122,11 +128,13 @@ public class MenuBuilder {
 			editDelete.setEnabled(false);
 			editGroup.setEnabled(false);
 			editCut.setEnabled(false);
+			editDuplicate.setEnabled(false);
 			// menu_edit_copy must remain enabled even if no entity is selected to allow the export of the full diagram to the system clipboard.
 		}
 		else {
 			editDelete.setEnabled(true);
 			editCut.setEnabled(true);
+			editDuplicate.setEnabled(true);
 
 			boolean allElementsInGroup = true;
 			for (GridElement e : selectedElements) {
@@ -160,7 +168,9 @@ public class MenuBuilder {
 		editDelete.setEnabled(enabled);
 		editCut.setEnabled(enabled);
 		editPaste.setEnabled(enabled);
+		editDuplicate.setEnabled(enabled);
 		editCopy.setEnabled(enabled);
+		editCopyAsImage.setEnabled(enabled);
 		editSelectAll.setEnabled(enabled);
 	}
 

@@ -9,10 +9,16 @@ import java.util.Vector;
 
 import com.baselet.control.basics.Converter;
 import com.baselet.control.basics.geom.Point;
+import com.baselet.control.config.Config;
+import com.baselet.control.constants.SystemInfo;
 import com.baselet.control.enums.Direction;
+import com.baselet.control.enums.Program;
+import com.baselet.control.enums.RuntimeType;
 import com.baselet.diagram.CurrentDiagram;
+import com.baselet.diagram.CustomPreviewHandler;
 import com.baselet.diagram.DiagramHandler;
 import com.baselet.diagram.DrawPanel;
+import com.baselet.diagram.PaletteHandler;
 import com.baselet.diagram.SelectorFrame;
 import com.baselet.diagram.SelectorOld;
 import com.baselet.element.interfaces.GridElement;
@@ -34,6 +40,24 @@ public abstract class UniversalListener extends ComponentAdapter implements Mous
 	private boolean disableElementMovement = true; // is true after mouseReleased until the next mousePressed AND if the lasso is active
 	private int old_x_eff, old_y_eff;
 	private int new_x_eff, new_y_eff;
+
+	/**
+	 * In the diagram area of the standalone version a drag draws a lasso to select multiple elements, ctrl+click toggles the selection of an element and ctrl+drag on the background moves the whole diagram.
+	 * Palettes (where dragging an element creates a copy in the diagram), custom element previews, old relations and the eclipse plugin keep the classic behavior.
+	 */
+	protected boolean isLassoByDefaultMode() {
+		return Config.getInstance().isSelectWithoutCtrl() && Program.getInstance().getRuntimeType() == RuntimeType.STANDALONE && !(handler instanceof PaletteHandler) && !(handler instanceof CustomPreviewHandler);
+	}
+
+	/**
+	 * true if the key configured for selecting multiple elements (Ctrl/Cmd by default, Shift if configured) is held during the event
+	 */
+	protected static boolean isMultiSelectKeyDown(MouseEvent me) {
+		if (Config.getInstance().isMultiSelectWithShift()) {
+			return me.isShiftDown();
+		}
+		return (me.getModifiers() & SystemInfo.META_KEY.getMask()) != 0;
+	}
 
 	protected UniversalListener(DiagramHandler handler) {
 		this.handler = handler;

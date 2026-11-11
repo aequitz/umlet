@@ -18,6 +18,7 @@ import org.apache.commons.io.filefilter.WildcardFileFilter;
 import com.baselet.util.logging.Logger;
 import com.baselet.util.logging.LoggerFactory;
 
+import com.baselet.control.AutoSaver;
 import com.baselet.control.Main;
 import com.baselet.control.config.Config;
 import com.baselet.control.config.handler.ConfigHandler;
@@ -165,11 +166,25 @@ public class MainStandalone {
 			new Timer("Update Checker", true).schedule(UpdateCheckTimerTask.getInstance(), 0);
 		}
 		Main.getInstance().init(new StandaloneGUI(Main.getInstance(), tmpFile()));
-		if (filenameToOpen == null) {
-			Main.getInstance().doNew();
+		AutoSaver.getInstance().restart(); // starts autosave if it is enabled in the config
+		boolean previousFilesOpened = false;
+		if (Config.getInstance().isOpenPreviousFiles()) {
+			for (String previousFile : Config.getInstance().getLastOpenFiles()) {
+				if (new File(previousFile).isFile()) { // files which have been moved or deleted in the meantime are skipped
+					Main.getInstance().doOpen(previousFile);
+					previousFilesOpened = true;
+				}
+			}
+			String lastActiveFile = Config.getInstance().getLastActiveFile();
+			if (previousFilesOpened && lastActiveFile != null && new File(lastActiveFile).isFile()) {
+				Main.getInstance().doOpen(lastActiveFile); // switches back to the tab which was active when the program was closed
+			}
 		}
-		else {
+		if (filenameToOpen != null) {
 			Main.getInstance().doOpen(filenameToOpen);
+		}
+		else if (!previousFilesOpened) {
+			Main.getInstance().doNew();
 		}
 	}
 

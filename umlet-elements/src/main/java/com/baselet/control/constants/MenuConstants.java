@@ -14,6 +14,7 @@ public class MenuConstants {
 	public static final String GENERATE_CLASS_OPTIONS = "Generate Class Element Options...";
 	public static final String SAVE = "Save";
 	public static final String SAVE_AS = "Save as...";
+	public static final String AUTOSAVE = "Autosave";
 	public static final String EXPORT = "Export...";
 	public static final String EXPORT_AS = "Export as...";
 	public static final String MAIL_TO = "Mail to...";
@@ -32,7 +33,9 @@ public class MenuConstants {
 	public static final String UNGROUP = "Ungroup";
 	public static final String CUT = "Cut";
 	public static final String COPY = "Copy";
+	public static final String COPY_AS_IMAGE = "Copy as Image";
 	public static final String PASTE = "Paste";
+	public static final String DUPLICATE = "Duplicate";
 
 	// CUSTOM ELEMENTS
 	public static final String CUSTOM_ELEMENTS = "Custom Elements";

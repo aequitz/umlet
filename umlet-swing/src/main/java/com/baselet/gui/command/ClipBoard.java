@@ -1,5 +1,6 @@
 package com.baselet.gui.command;
 
+import java.awt.Image;
 import java.awt.Toolkit;
 import java.awt.datatransfer.Clipboard;
 import java.awt.datatransfer.DataFlavor;
@@ -8,6 +9,7 @@ import java.awt.datatransfer.UnsupportedFlavorException;
 import java.util.ArrayList;
 import java.util.List;
 
+import com.baselet.control.config.Config;
 import com.baselet.control.constants.Constants;
 import com.baselet.diagram.DiagramHandler;
 import com.baselet.diagram.io.OutputHandler;
@@ -44,6 +46,45 @@ public class ClipBoard implements Transferable {
 		if (clipboard != null) { // Issue 230: copy after zooming the entities
 			clipboard.setContents(this, null);
 		}
+	}
+
+	/**
+	 * Puts the given elements as an image on the system clipboard (using the configured export scale).
+	 * In contrast to {@link #copyAndZoomToDefaultLevel(List, DiagramHandler)} the elements are not copied into the internal clipboard, therefore a following paste is not influenced.
+	 * @return false if there is nothing to copy
+	 */
+	public boolean copyAsImage(List<GridElement> entities, DiagramHandler handler) {
+		if (entities.isEmpty()) {
+			return false;
+		}
+		// the image must be independent of the current zoom level, therefore render copies which are zoomed to 100%
+		List<GridElement> zoomedEntities = new ArrayList<GridElement>(entities.size());
+		DiagramHandler dhNew = new DiagramHandler(null);
+		for (GridElement entity : entities) {
+			zoomedEntities.add(ElementFactorySwing.createCopy(entity, dhNew));
+		}
+		DiagramHandler.zoomEntities(handler.getGridSize(), Constants.DEFAULTGRIDSIZE, zoomedEntities);
+		final Image image = OutputHandler.createImageForGridElements(zoomedEntities, null, Config.getInstance().getExportScale());
+		clipboard.setContents(new Transferable() {
+			@Override
+			public DataFlavor[] getTransferDataFlavors() {
+				return new DataFlavor[] { DataFlavor.imageFlavor };
+			}
+
+			@Override
+			public boolean isDataFlavorSupported(DataFlavor flavor) {
+				return DataFlavor.imageFlavor.equals(flavor);
+			}
+
+			@Override
+			public Object getTransferData(DataFlavor flavor) throws UnsupportedFlavorException {
+				if (!isDataFlavorSupported(flavor)) {
+					throw new UnsupportedFlavorException(flavor);
+				}
+				return image;
+			}
+		}, null);
+		return true;
 	}
 
 	public List<GridElement> paste() {

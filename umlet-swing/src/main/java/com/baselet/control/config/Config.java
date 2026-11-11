@@ -3,6 +3,8 @@ package com.baselet.control.config;
 import java.awt.Font;
 import java.awt.Point;
 import java.io.File;
+import java.util.ArrayList;
+import java.util.List;
 
 import javax.swing.UIManager;
 
@@ -54,6 +56,16 @@ public class Config {
 	private Integer propertiesPanelFontsize = 11;
 	private boolean propertiesPanelLineWrap = false;
 	private boolean propertiesPanelLineNumbers = false;
+	private boolean openPreviousFiles = false;
+	private boolean selectWithoutCtrl = true;
+	private boolean multiSelectWithShift = false; // false: Ctrl (Cmd on mac) selects multiple elements, true: Shift
+	private boolean typeIntoProperties = true;
+	private boolean autocompleteWhileTyping = true;
+	private boolean autosave = false;
+	private int autosaveSeconds = 300;
+	private PaletteInsertPosition paletteInsertPosition = PaletteInsertPosition.TOP_RIGHT;
+	private List<String> lastOpenFiles = new ArrayList<String>();
+	private String lastActiveFile = null;
 	private String uiScale = "Default";
 	private Integer exportScale = 1;
 	private Integer exportDpi = null;
@@ -76,6 +88,98 @@ public class Config {
 	private void addFlatLafThemes() {
 		UIManager.installLookAndFeel("Flat Darcula", Constants.FLAT_DARCULA_THEME);
 		UIManager.installLookAndFeel("Flat Light", Constants.FLAT_LIGHT_THEME);
+	}
+
+	public PaletteInsertPosition getPaletteInsertPosition() {
+		return paletteInsertPosition;
+	}
+
+	public void setPaletteInsertPosition(PaletteInsertPosition paletteInsertPosition) {
+		this.paletteInsertPosition = paletteInsertPosition;
+	}
+
+	/**
+	 * if true, a plain drag draws the selection lasso and shift+click selects multiple elements; if false the classic behavior (ctrl+click / ctrl+drag) is used
+	 */
+	/**
+	 * if true, typing while exactly one element of a diagram is selected writes into the properties panel of this element
+	 */
+	/**
+	 * if true, the autocomplete suggestions of the properties panel open automatically while typing (otherwise only with Ctrl+Space)
+	 */
+	public boolean isAutocompleteWhileTyping() {
+		return autocompleteWhileTyping;
+	}
+
+	public void setAutocompleteWhileTyping(boolean autocompleteWhileTyping) {
+		this.autocompleteWhileTyping = autocompleteWhileTyping;
+	}
+
+	public boolean isTypeIntoProperties() {
+		return typeIntoProperties;
+	}
+
+	public void setTypeIntoProperties(boolean typeIntoProperties) {
+		this.typeIntoProperties = typeIntoProperties;
+	}
+
+	public boolean isAutosave() {
+		return autosave;
+	}
+
+	public void setAutosave(boolean autosave) {
+		this.autosave = autosave;
+	}
+
+	public int getAutosaveSeconds() {
+		return autosaveSeconds;
+	}
+
+	public void setAutosaveSeconds(int autosaveSeconds) {
+		this.autosaveSeconds = Math.max(1, autosaveSeconds); // a timer interval of 0 would save permanently
+	}
+
+	public boolean isSelectWithoutCtrl() {
+		return selectWithoutCtrl;
+	}
+
+	public void setSelectWithoutCtrl(boolean selectWithoutCtrl) {
+		this.selectWithoutCtrl = selectWithoutCtrl;
+	}
+
+	public boolean isMultiSelectWithShift() {
+		return multiSelectWithShift;
+	}
+
+	public void setMultiSelectWithShift(boolean multiSelectWithShift) {
+		this.multiSelectWithShift = multiSelectWithShift;
+	}
+
+	public boolean isOpenPreviousFiles() {
+		return openPreviousFiles;
+	}
+
+	public void setOpenPreviousFiles(boolean openPreviousFiles) {
+		this.openPreviousFiles = openPreviousFiles;
+	}
+
+	/**
+	 * the files which have been open when the program was closed the last time (in tab order)
+	 */
+	public List<String> getLastOpenFiles() {
+		return lastOpenFiles;
+	}
+
+	public void setLastOpenFiles(List<String> lastOpenFiles) {
+		this.lastOpenFiles = lastOpenFiles;
+	}
+
+	public String getLastActiveFile() {
+		return lastActiveFile;
+	}
+
+	public void setLastActiveFile(String lastActiveFile) {
+		this.lastActiveFile = lastActiveFile;
 	}
 
 	public String getUiManager() {
